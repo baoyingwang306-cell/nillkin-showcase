@@ -1023,11 +1023,26 @@
         }
 
         // ==========================================
-        // 8. 窗口尺寸调整监听
+        // 8. 高清 Canvas 适配 (新增)
+        // ==========================================
+        function resizeCanvasHighDPI() {
+            // 获取当前设备的物理像素比 (如果获取不到则默认为1)
+            const dpr = window.devicePixelRatio || 1;
+            
+            // 设置 Canvas 的内部实际渲染像素 (放大 dpr 倍)
+            canvas.width = window.innerWidth * dpr;
+            canvas.height = window.innerHeight * dpr;
+            
+            // 强制使用 CSS 控制 Canvas 在屏幕上的视觉大小
+            canvas.style.width = `${window.innerWidth}px`;
+            canvas.style.height = `${window.innerHeight}px`;
+        }
+
+        // ==========================================
+        // 9. 窗口尺寸调整监听
         // ==========================================
         window.addEventListener('resize', () => { 
-            canvas.width = window.innerWidth; 
-            canvas.height = window.innerHeight; 
+            resizeCanvasHighDPI();
             updateCarousel(currentCarouselIndex);
             updateCarouselByScroll();
             
@@ -1035,10 +1050,9 @@
         });
         
         // ==========================================
-        // 9. 执行启动
+        // 10. 执行启动
         // ==========================================
-        canvas.width = window.innerWidth; 
-        canvas.height = window.innerHeight;
+        resizeCanvasHighDPI();
 
         updateCarousel(0);
         preloadImages();
