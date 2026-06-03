@@ -904,57 +904,27 @@
         });
 
         // ==========================================
-        // 5. 3D 序列帧预加载 (极致移动端优化版)
+        // 5. 3D 序列帧预加载
         // ==========================================
         function preloadImages() {
-            const priorityFrames = 30; // 优先保障首屏秒开的帧数
-            let currentIndex = startFrame;
-
-            // 核心功能：按批次加载图片
-            function loadBatch(amount) {
-                const end = Math.min(currentIndex + amount - 1, endFrame);
-                if (currentIndex > endFrame) return;
+            for (let i = startFrame; i <= endFrame; i++) {
+                const img = new Image();
+                img.src = framePath(i);
                 
-                for (let i = currentIndex; i <= end; i++) {
-                    const img = new Image();
-                    img.src = framePath(i);
-                    img.onload = img.onerror = () => {
-                        markImageLoaded();
-                    };
-                    images[i] = img; // 确保数组顺序不会因为网络快慢错乱
-                }
-                currentIndex = end + 1;
-            }
-
-            // 第一步：瞬间发出前 30 张的请求
-            loadBatch(priorityFrames);
-
-            // 第二步：高频监听首屏是否就绪
-            const checkInit = setInterval(() => {
-                if (loadedCount >= priorityFrames && !appStarted) {
-                    clearInterval(checkInit);
-                    appStarted = true;
-                    initApp(); // 核心：前30张好了立刻启动渲染循环，不等后面的！
-
-                    // 第三步：启动后台静默排队加载
-                    lazyLoadRest();
-                }
-            }, 100);
-
-            // 后台慢速加载逻辑（避免占满手机网络带宽导致页面卡死）
-            function lazyLoadRest() {
-                if (currentIndex > endFrame) return;
+                img.onload = markImageLoaded;
+                img.onerror = markImageLoaded;
                 
-                loadBatch(5); // 每次只悄悄下载 5 张
-                
-                // 停顿 100 毫秒后再下下一批，给用户滑动页面留出网络呼吸空间
-                setTimeout(lazyLoadRest, 100); 
+                images.push(img);
             }
         }
 
         function markImageLoaded() {
             loadedCount++;
-            // 移除了这里的 initApp 调用，交由上面的 setInterval 控制
+
+            if (loadedCount === totalFrames && !appStarted) {
+                appStarted = true;
+                initApp(); 
+            }
         }
 
         // ==========================================
