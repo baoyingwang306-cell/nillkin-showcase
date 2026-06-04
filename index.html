@@ -178,14 +178,6 @@
             z-index: 1; 
         }
 
-        /* 视频标签的样式 */
-        #sequence-video {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            display: none; /* 默认隐藏，JS根据设备控制显示 */
-        }
-
         canvas { 
             width: 100%; 
             height: 100%; 
@@ -686,9 +678,6 @@
 
     <div class="scrollytelling-container">
         <div class="canvas-container" id="main-canvas-wrapper">
-            <!-- 新增：专为移动端准备的视频标签 (隐藏) -->
-            <video id="sequence-video" muted playsinline webkit-playsinline preload="auto"></video>
-            <!-- 保留：桌面端的 Canvas -->
             <canvas id="sequence-canvas"></canvas>
         </div>
 
@@ -808,19 +797,22 @@
         const endFrame = 749;
         const totalFrames = endFrame - startFrame + 1;
         
-        // 桌面端素材路径映射
+        // 自动识别双端素材路径
         const framePath = (index) => {
             const paddedIndex = String(index).padStart(3, '0');
-            return `assets/a${paddedIndex}.webp`; 
+            if (window.innerWidth <= 768) {
+                return `assets/mobile/a_${paddedIndex}.webp`;
+            } else {
+                return `assets/a${paddedIndex}.webp`;
+            }
         }; 
         
         const easeAmount = 0.12; 
 
         // ==========================================
-        // 2. DOM 元素获取 & 设备检测
+        // 2. DOM 元素获取
         // ==========================================
         const canvas = document.getElementById('sequence-canvas');
-        const video = document.getElementById('sequence-video'); // 获取视频元素
         const hero = document.getElementById('hero'); 
         const canvasWrapper = document.getElementById('main-canvas-wrapper');
         const ctx = canvas.getContext('2d');
@@ -831,9 +823,6 @@
         const track = document.getElementById('carouselTrack');
         const dots = document.querySelectorAll('.dot');
         const cards = document.querySelectorAll('.mode-card');
-
-        // 检测是否为移动端 (宽度 <= 768px)
-        const isMobile = window.innerWidth <= 768;
 
         const images = [];
         let loadedCount = 0;
@@ -854,6 +843,7 @@
         // ==========================================
         function updateCarousel(index) {
             if (!track || !cards.length) return;
+
             index = clamp(index, 0, cards.length - 1);
             currentCarouselIndex = index;
 
@@ -879,6 +869,7 @@
 
         function updateCarouselByScroll() {
             if (!modesSection || !cards.length) return;
+
             const sectionTop = modesSection.offsetTop;
             const sectionHeight = modesSection.offsetHeight;
             const scrollY = window.scrollY;
@@ -886,6 +877,7 @@
 
             const start = sectionTop;
             const end = sectionTop + sectionHeight - vh;
+
             const progress = clamp((scrollY - start) / (end - start), 0, 1);
             const targetIndex = Math.round(progress * (cards.length - 1));
 
@@ -895,6 +887,7 @@
         dots.forEach((dot, i) => {
             dot.addEventListener('click', () => {
                 if (!modesSection || !cards.length) return;
+
                 const sectionTop = modesSection.offsetTop;
                 const sectionHeight = modesSection.offsetHeight;
                 const vh = window.innerHeight;
@@ -911,40 +904,26 @@
         });
 
         // ==========================================
-        // 5. 桌面端：3D 序列帧预加载 (加入分段排队优化)
+        // 5. 3D 序列帧预加载
         // ==========================================
         function preloadImages() {
-            const priorityFrames = 30; // 桌面端依然优先加载前30帧保证秒开
-            let currentIndex = startFrame;
-
-            function loadBatch(amount) {
-                const end = Math.min(currentIndex + amount - 1, endFrame);
-                if (currentIndex > endFrame) return;
-                for (let i = currentIndex; i <= end; i++) {
-                    const img = new Image();
-                    img.src = framePath(i);
-                    img.onload = img.onerror = () => { loadedCount++; };
-                    images[i] = img; 
-                }
-                currentIndex = end + 1;
+            for (let i = startFrame; i <= endFrame; i++) {
+                const img = new Image();
+                img.src = framePath(i);
+                
+                img.onload = markImageLoaded;
+                img.onerror = markImageLoaded;
+                
+                images.push(img);
             }
+        }
 
-            // 发起第一批请求
-            loadBatch(priorityFrames);
+        function markImageLoaded() {
+            loadedCount++;
 
-            const checkInit = setInterval(() => {
-                if (loadedCount >= priorityFrames && !appStarted) {
-                    clearInterval(checkInit);
-                    appStarted = true;
-                    initApp(); 
-                    lazyLoadRest(); // 启动后台排队加载剩余帧
-                }
-            }, 100);
-
-            function lazyLoadRest() {
-                if (currentIndex > endFrame) return;
-                loadBatch(5); 
-                setTimeout(lazyLoadRest, 100); 
+            if (loadedCount === totalFrames && !appStarted) {
+                appStarted = true;
+                initApp(); 
             }
         }
 
@@ -954,7 +933,9 @@
         function initApp() {
             const observer = new IntersectionObserver((entries) => {
                 entries.forEach(entry => { 
-                    if(entry.isIntersecting) { entry.target.classList.add('active'); }
+                    if(entry.isIntersecting) {
+                        entry.target.classList.add('active'); 
+                    }
                 });
             }, { threshold: 0.1 });
             
@@ -986,40 +967,38 @@
             });
 
             updateCarouselByScroll();
+            
             renderLoop();
         }
 
         // ==========================================
-        // 7. 核心渲染引擎 (双模混合：手机控视频，电脑画图片)
+        // 7. 核心渲染循环引擎
         // ==========================================
         function renderLoop() {
             smoothedProgress += (currentProgress - smoothedProgress) * easeAmount;
+            const idx = Math.floor(smoothedProgress * (totalFrames - 1));
+            const img = images[idx];
             
-            if (isMobile) {
-                // 👉 移动端逻辑：根据滚动比例控制视频播放进度
-                if (video.duration) {
-                    // 防止 iOS 因为精度问题报错，限制最大时间戳
-                    let targetTime = smoothedProgress * video.duration;
-                    targetTime = clamp(targetTime, 0, video.duration - 0.01);
-                    video.currentTime = targetTime;
-                }
-            } else {
-                // 👉 桌面端逻辑：绘制 Canvas 高清图片
-                const idx = Math.floor(smoothedProgress * (totalFrames - 1));
-                const img = images[idx];
+            if (img && img.complete && img.naturalWidth > 0) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                const ratio = Math.min(canvas.width / img.width, canvas.height / img.height);
                 
-                if (img && img.complete && img.naturalWidth > 0) {
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-                    const ratio = Math.min(canvas.width / img.width, canvas.height / img.height);
-                    
-                    const centerShift_x = (canvas.width - img.width * ratio) / 2;
-                    const centerShift_y = (canvas.height - img.height * ratio) / 2;
-                    
-                    ctx.drawImage(img, 0, 0, img.width, img.height, centerShift_x, centerShift_y, img.width * ratio, img.height * ratio);
-                }
+                const centerShift_x = (canvas.width - img.width * ratio) / 2;
+                const centerShift_y = (canvas.height - img.height * ratio) / 2;
+                
+                ctx.drawImage(
+                    img, 
+                    0, 
+                    0, 
+                    img.width, 
+                    img.height, 
+                    centerShift_x, 
+                    centerShift_y, 
+                    img.width * ratio, 
+                    img.height * ratio
+                );
             }
             
-            // 👉 公共逻辑：文字透明度和模糊处理
             textSections.forEach(s => {
                 const r = s.getBoundingClientRect();
                 const centerY = r.top + r.height / 2;
@@ -1044,64 +1023,25 @@
         }
 
         // ==========================================
-        // 8. 高清 Canvas 适配 (用于桌面端防模糊)
-        // ==========================================
-        function resizeCanvasHighDPI() {
-            const dpr = window.devicePixelRatio || 1;
-            canvas.width = window.innerWidth * dpr;
-            canvas.height = window.innerHeight * dpr;
-            canvas.style.width = `${window.innerWidth}px`;
-            canvas.style.height = `${window.innerHeight}px`;
-        }
-
-        // ==========================================
-        // 9. 窗口尺寸调整监听
+        // 8. 窗口尺寸调整监听
         // ==========================================
         window.addEventListener('resize', () => { 
-            if (!isMobile) {
-                resizeCanvasHighDPI();
-            }
+            canvas.width = window.innerWidth; 
+            canvas.height = window.innerHeight; 
             updateCarousel(currentCarouselIndex);
             updateCarouselByScroll();
+            
             window.dispatchEvent(new Event('scroll'));
         });
         
         // ==========================================
-        // 10. 终极启动分支
+        // 9. 执行启动
         // ==========================================
+        canvas.width = window.innerWidth; 
+        canvas.height = window.innerHeight;
+
         updateCarousel(0);
-
-        if (isMobile) {
-            // ----- 手机端：隐藏画布，加载视频 -----
-            canvas.style.display = 'none';
-            video.style.display = 'block';
-            
-            // ⚠️ 你的手机视频文件路径，这里设定为 assets/mobile/mb.mp4
-            video.src = 'assets/mobile/mb.mp4'; 
-            
-            // 监听视频元数据加载完毕后，启动动画
-            video.addEventListener('loadedmetadata', () => {
-                if (!appStarted) {
-                    appStarted = true;
-                    initApp();
-                }
-            });
-
-            // 网络兜底保护：有些手机网络差，强制 0.5 秒后就算没加载完元数据也先启动文字和排版动画
-            setTimeout(() => {
-                if (!appStarted) {
-                    appStarted = true;
-                    initApp();
-                }
-            }, 500);
-
-        } else {
-            // ----- 桌面端：隐藏视频，加载图片序列 -----
-            video.style.display = 'none';
-            canvas.style.display = 'block';
-            resizeCanvasHighDPI();
-            preloadImages();
-        }
+        preloadImages();
     </script>
 </body>
 </html>
