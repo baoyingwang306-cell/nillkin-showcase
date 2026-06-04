@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NILLKIN 悍能无畏 - 高级商业展示</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&family=Montserrat:wght@400;500;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        /* 基础重置 & 全局字体 */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            background-color: #000000; color: #ffffff; 
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            overflow-x: hidden; 
+        }
+
+        .text-gray {
+            background: linear-gradient(to bottom, #ffffff 15%, #43b596 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            display: inline-block; padding-bottom: 5px; 
+        }
+
+        /* 顶部固定导航栏 */
+        .site-header { 
+            position: fixed; top: 0; left: 0; width: 100%; padding: 2.5rem 3%; 
+            display: flex; justify-content: space-between; align-items: center; z-index: 100; 
+            background: linear-gradient(to bottom, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.7) 40%, rgba(0,0,0,0) 100%); 
+        }
+        .site-logo img { height: 22px; filter: invert(1) brightness(2); display: block; }
+        .main-nav { display: flex; align-items: center; gap: 3rem; }
+        .main-nav a { 
+            font-family: 'Montserrat', sans-serif; color: #aaaaaa; text-decoration: none; 
+            font-size: 0.75rem; font-weight: 500; letter-spacing: 2px; text-transform: uppercase; transition: color 0.3s ease; 
+        }
+        .main-nav a:hover { color: #ffffff; }
+        .cart-icon svg { width: 18px; height: 18px; stroke: #aaaaaa; transition: stroke 0.3s ease; }
+        .cart-icon:hover svg { stroke: #ffffff; }
+
+        /* 静态首屏 Hero Section */
+        .hero-section { 
+            position: relative; width: 100%; height: 100vh; background-color: #000000; 
+            background-image: url('assets/H-d-2.png'); background-size: 90% auto; background-position: 60% center; background-repeat: no-repeat; 
+        }
+        .hero-content-left { 
+            position: absolute; left: 15%; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; align-items: flex-start; z-index: 2; 
+        }
+        .hero-content-left h1 { 
+            font-family: 'Montserrat', sans-serif; font-size: 6.5rem; font-weight: 700; line-height: 1.1; letter-spacing: 5px; margin-bottom: 1.5rem; color: #ffffff; 
+        }
+        .text-gradient-wuwei {
+            background: linear-gradient(to bottom, #ffffff 20%, #000000 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            display: inline-block; padding-bottom: 5px; 
+        }
+        .hero-content-left .subtitle { font-size: 0.9rem; color: #aaaaaa; letter-spacing: 5px; text-transform: uppercase; }
+        .hero-content-right { position: absolute; right: 15%; bottom: 15%; display: flex; flex-direction: column; align-items: flex-end; z-index: 2; }
+        .hero-content-right h3 { font-size: 1.4rem; font-weight: 600; margin-bottom: 0.8rem; letter-spacing: 2px; color: #43b596; }
+        .hero-content-right p { font-size: 1rem; color: #eeeeee; letter-spacing: 3px; }
+
+        /* 沉浸式 3D 滚动序列特效区 */
+        .scrollytelling-container { position: relative; width: 100%; }
+        .canvas-container { position: -webkit-sticky; position: sticky; top: 0; width: 100%; height: 100vh; z-index: 1; }
+        
+        /* 🔥 关键优化：强制开启 GPU 硬件加速，极大地缓解移动端卡顿 🔥 */
+        canvas { 
+            width: 100%; height: 100%; display: block; 
+            transform: translateZ(0); 
+            will-change: transform;
+        }
+
+        .text-container { position: relative; z-index: 2; margin-top: -100vh; width: 100%; pointer-events: none; }
+        .text-section { position: relative; width: 100%; }
+        .sticky-text-content { 
+            position: -webkit-sticky; position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; 
+            will-change: opacity, filter; padding: 0 5%; 
+        }
+        .sticky-text-content h2 { font-size: 5rem; font-weight: 600; line-height: 1.15; letter-spacing: 2px; margin-bottom: 1.5rem; color: #f5f5f7; text-shadow: none; }
+        .sticky-text-content p { font-size: 1.4rem; font-weight: 400; letter-spacing: 1px; line-height: 1.6; color: #a1a1a6; max-width: 580px; margin-bottom: 0; text-shadow: none; }
+
+        /* 苹果风滚轮滑动展示区 */
+        .modes-section { position: relative; width: 100%; height: 450vh; background-color: #000000; z-index: 3; }
+        .modes-sticky { position: sticky; top: 0; width: 100%; height: 100vh; padding: 7rem 0 5rem; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; }
+        .modes-header { text-align: center; margin-bottom: 4rem; padding: 0 5%; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; }
+        .modes-header h2 { font-size: 4.5rem; font-weight: 600; line-height: 1.15; letter-spacing: 2px; color: #f5f5f7; text-align: center; }
+        .modes-header p { font-size: 1.4rem; color: #a1a1a6; margin-top: 1.5rem; letter-spacing: 1px; line-height: 1.6; text-align: center; max-width: 800px; }
+        .carousel-viewport { position: relative; width: 100%; overflow: visible; }
+        .carousel-track { display: flex; gap: 40px; width: max-content; padding: 0; margin: 0; will-change: transform; transition: transform 0.9s cubic-bezier(0.2, 0, 0.2, 1); }
+        .mode-card { flex: 0 0 72vw; max-width: 1120px; aspect-ratio: 16 / 9; position: relative; border-radius: 40px; overflow: hidden; background-color: #111111; opacity: 0.25; transform: scale(0.78); filter: blur(8px); transition: opacity 0.9s cubic-bezier(0.2, 0, 0.2, 1), transform 0.9s cubic-bezier(0.2, 0, 0.2, 1), filter 0.9s cubic-bezier(0.2, 0, 0.2, 1); }
+        .mode-card.active { opacity: 1; transform: scale(1.02); filter: blur(0); z-index: 2; }
+        .mode-card.prev, .mode-card.next { opacity: 0.45; transform: scale(0.86); filter: blur(5px); }
+        .mode-image { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 1s cubic-bezier(0.2, 0, 0.2, 1), filter 0.9s ease; }
+        .mode-card.active .mode-image { transform: scale(1.02); }
+        .mode-card:not(.active) .mode-image { filter: brightness(0.55) saturate(0.75); }
+        .mode-info { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background: rgba(0,0,0,0.3); text-align: center; pointer-events: none; opacity: 0; transform: translateY(20px); transition: all 0.8s ease; }
+        .mode-card.active .mode-info { opacity: 1; transform: translateY(0); }
+        .mode-info h3 { font-size: 3.5rem; font-weight: 700; color: #ffffff; margin-bottom: 1rem; text-shadow: 0 2px 10px rgba(0,0,0,0.5); }
+        .mode-info p { font-size: 1.2rem; color: #ffffff; max-width: 80%; text-shadow: 0 2px 10px rgba(0,0,0,0.5); }
+        .carousel-dots { display: flex; gap: 15px; margin-top: 4rem; flex-shrink: 0; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; background: #333333; cursor: pointer; transition: all 0.3s ease; }
+        .dot.active { background: #888888; width: 35px; border-radius: 10px; }
+        .reveal { opacity: 0; transform: translateY(60px); transition: all 1.2s cubic-bezier(0.2, 0, 0.2, 1); }
+        .reveal.active { opacity: 1; transform: translateY(0); }
+
+        /* 尾屏 */
+        .footer-section { height: 100vh; display: flex; justify-content: center; align-items: center; background-color: #000000; position: relative; z-index: 3; }
+        .footer-content { text-align: center; width: 100%; }
+        .footer-subtitle { color: #43b596; font-size: 1.2rem; font-weight: 600; letter-spacing: 3px; margin-bottom: 1.5rem; }
+        .footer-title { color: #eeeeee; font-size: 4.5rem; font-weight: 700; letter-spacing: 5px; margin-bottom: 3.5rem; text-shadow: 0 4px 20px rgba(0,0,0,0.5); }
+        .footer-buttons { display: flex; gap: 1.5rem; justify-content: center; }
+        .footer-btn { padding: 0.7rem 2.2rem; border-radius: 50px; font-size: 0.85rem; font-weight: 600; text-decoration: none; transition: all 0.3s ease; pointer-events: auto; }
+        .btn-primary { background-color: #ffffff; color: #000000; }
+        .btn-secondary { background-color: transparent; color: #ffffff; border: 1px solid #555555; }
+
+        /* 移动端适配 */
+        @media (max-width: 768px) {
+            .site-header { padding: 1.5rem 5%; }
+            .main-nav { display: none; }
+            .site-logo img { height: 16px; } 
+            .hero-section { background-image: url('assets/mobile/H-d-2.webp'); background-size: 100% auto; background-position: center bottom 55%; }
+            .hero-content-left { left: 6%; top: 12%; transform: none; }
+            .hero-content-left h1 { font-size: 3.2rem; letter-spacing: 2px; }
+            .hero-content-left .subtitle { font-size: 0.7rem; letter-spacing: 3px; }
+            .hero-content-right { right: auto; left: 6%; bottom: 15%; align-items: flex-start; }
+            .hero-content-right h3 { font-size: 0.95rem; }
+            .hero-content-right p { font-size: 0.75rem; letter-spacing: 1px; }
+
+            .sticky-text-content { padding: 0 8% !important; text-align: left !important; align-items: flex-start !important; }
+            
+            .text-section:nth-child(1) .sticky-text-content { justify-content: flex-start 10% !important; padding-top: 5vh !important; }
+            .text-section:nth-child(1) .sticky-text-content h2 { font-size: 1.8rem !important; line-height: 1.2 !important; margin-bottom: 0 !important; }
+            .text-section:nth-child(1) .sticky-text-content p { font-size: 0.85rem !important; line-height: 1.5 !important; margin-top: 420px !important; margin-left: 0px !important; }
+
+            .text-section:nth-child(2) .sticky-text-content { justify-content: flex-end !important; padding-bottom: 15vh !important; }
+            .text-section:nth-child(2) .sticky-text-content h2 { font-size: 1.8rem !important; line-height: 1.2 !important; margin-bottom: 0 !important; }
+            .text-section:nth-child(2) .sticky-text-content p { font-size: 0.85rem !important; line-height: 1.5 !important; margin-top: 15px !important; margin-left: 0px !important; }
+
+            .text-section:nth-child(3) .sticky-text-content { justify-content: flex-start 10% !important; padding-bottom: -15vh !important; }
+            .text-section:nth-child(3) .sticky-text-content h2 { font-size: 1.8rem !important; line-height: 1.2 !important; margin-bottom: 0 !important; }
+            .text-section:nth-child(3) .sticky-text-content p { font-size: 0.85rem !important; line-height: 1.5 !important; margin-top: 420px !important; margin-left: 0px !important; }
+
+            .text-section:nth-child(4) .sticky-text-content { justify-content: flex-start !important; padding-top: 63vh !important; }
+            .text-section:nth-child(4) .sticky-text-content h2 { font-size: 1.8rem !important; line-height: 1.2 !important; margin-bottom: 0 !important; }
+            .text-section:nth-child(4) .sticky-text-content p { font-size: 0.85rem !important; line-height: 1.5 !important; margin-top: 15px !important; margin-left: 0px !important; }
+
+            .text-section:nth-child(5) .sticky-text-content { justify-content: flex-end !important; padding-bottom: 10vh !important; }
+            .text-section:nth-child(5) .sticky-text-content h2 { font-size: 1.8rem !important; line-height: 1.2 !important; margin-bottom: 0 !important; }
+            .text-section:nth-child(5) .sticky-text-content p { font-size: 0.85rem !important; line-height: 1.5 !important; margin-top: 15px !important; margin-left: 0px !important; }
+
+            .text-section:nth-child(6) .sticky-text-content { justify-content: flex-end !important; padding-bottom: 13vh !important; text-align: center !important; align-items: center !important; }
+            .text-section:nth-child(6) .sticky-text-content h2 { font-size: 1.8rem !important; line-height: 1.2 !important; margin-bottom: 0 !important; }
+            .text-section:nth-child(6) .sticky-text-content p { font-size: 0.85rem !important; line-height: 1.5 !important; margin-top: 15px !important; margin-left: 0px !important; }
+
+            .modes-sticky { padding: 5rem 0 3rem; }
+            .modes-header { margin-bottom: 2.5rem; }
+            .modes-header h2 { font-size: 2.2rem; }
+            .modes-header p { font-size: 0.85rem; padding: 0 5%; }
+            .mode-card { flex-basis: 90vw; aspect-ratio: 16 / 9; border-radius: 20px; }
+            .mode-info { background: rgba(0,0,0,0.3); justify-content: center; padding-bottom: 0; }
+            .mode-info h3 { font-size: 1.4rem; margin-bottom: 0.5rem; }
+            .mode-info p { font-size: 0.75rem; }
+            .carousel-dots { margin-top: 2rem; }
+            .footer-subtitle { font-size: 1rem; }
+            .footer-title { font-size: 2rem; letter-spacing: 3px; padding: 0 5%; }
+            .footer-buttons { flex-direction: column; align-items: center; gap: 1rem; width: 100%; padding: 0 10%; }
+            .footer-btn { font-size: 0.8rem; width: 100%; padding: 0.7rem 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <header class="site-header">
+        <a href="#" class="site-logo">
+            <img src="assets/logo.png" alt="NILLKIN">
+        </a>
+        <nav class="main-nav">
+            <a href="#">HOME</a>
+            <a href="#">ABOUT US</a>
+            <a href="#">OUR PRODUCTS</a>
+            <a href="#">CONTACT</a>
+        </nav>
+    </header>
+
+    <div class="hero-section" id="hero">
+        <div class="hero-content-left">
+            <h1>悍能<br><span class="text-gray">无畏</span></h1>
+            <div class="subtitle">ADVANCED PROTECTION SERIES</div>
+        </div>
+        <div class="hero-content-right">
+            <h3>悍能 键盘保护套</h3>
+            <p>极致防护 · 生产力进阶 · 随需而变</p>
+        </div>
+    </div>
+
+    <div class="scrollytelling-container">
+        <div class="canvas-container" id="main-canvas-wrapper">
+            <canvas id="sequence-canvas"></canvas>
+        </div>
+
+        <div class="text-container">
+            <div class="text-section" style="margin-top: 0vh; height: 300vh;">
+                <div class="sticky-text-content" style="justify-content: center; align-items: flex-start; padding-left: 15%;">
+                    <h2>强悍防护，<br><span class="text-gray">多能扩充。</span></h2>
+                    <p>让 iPad 成为高效工作站，随时随地在办公与娱乐间无缝切换。</p>
+                </div>
+            </div>
+
+            <div class="text-section" style="margin-top: -10vh; height: 250vh;">
+                <div class="sticky-text-content" style="justify-content: flex-start; align-items: flex-start; padding-left: 15%; padding-top: 12%;">
+                    <h2>随意施展，<br><span class="text-gray">看屏都舒服。</span></h2>
+                    <p>110-180°无极调节支架，坚固机械铰链，稳稳不打晃。</p>
+                </div>
+            </div>
+
+            <div class="text-section" style="margin-top: 0vh; height: 200vh;">
+                <div class="sticky-text-content" style="justify-content: center; align-items: flex-start; padding-left: 15%;">
+                    <h2>舒适键入，<br><span class="text-gray">安静的<br>码字体验。</span></h2>
+                    <p>配合适宜的间隔布局，按压安静且舒适，课堂/会议录音不干扰，让您的手指自由舒展。</p>
+                </div>
+            </div>
+
+            <div class="text-section" style="margin-top: -10vh; height: 250vh;">
+                <div class="sticky-text-content" style="justify-content: center; align-items: flex-start; padding-left: 15%;">
+                    <h2>大面积<br>触控面板，<br><span class="text-gray">灵敏捕捉<br>每个手势。</span></h2>
+                    <p>支持iPad键盘触控手势（例如滑动、滚动、返回、切换应用程序等），操控得心应手，办公自然高效。</p>
+                </div>
+            </div>
+
+            <div class="text-section" style="margin-top: 15vh; height: 250vh;">
+                <div class="sticky-text-content" style="justify-content: flex-end; align-items: flex-start; padding-left: 10%; padding-bottom: 5%;">
+                    <h2>专利<br>镜头滑盖设计，<br><span class="text-gray">保护清晰视界。</span></h2>
+                    <p>全金属镜盖，镜圈增高1.1mm。</p>
+                </div>
+            </div>
+
+            <div class="text-section" style="margin-top: 0vh; height: 200vh;">
+                <div class="sticky-text-content" style="justify-content: flex-end; align-items: center; padding-bottom: 5%; text-align: center;">
+                    <h2>悍甲上阵，<br><span class="text-gray">看得见的保护力。</span></h2>
+                    <p>高弹TPU软边框，缓震防摔。</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modes-section" id="modesSection">
+        <div class="modes-sticky">
+            <div class="modes-header reveal">
+                <h2>让 iPad 成为，<br><span class="text-gray">高效工作站。</span></h2>
+                <p>随需而变，满足每一个场合，可拆卸键盘设计，搭配可调节支架。</p>
+            </div>
+            
+            <div class="carousel-viewport reveal">
+                <div class="carousel-track" id="carouselTrack">
+                    <div class="mode-card active">
+                        <img src="assets/mode1.jpg" class="mode-image" alt="笔记本模式">
+                        <div class="mode-info">
+                            <h3>笔记本模式</h3>
+                            <p>黄金开合角度，高效文字录入。</p>
+                        </div>
+                    </div>
+                    <div class="mode-card">
+                        <img src="assets/mode2.jpg" class="mode-image" alt="分体模式">
+                        <div class="mode-info">
+                            <h3>分体模式</h3>
+                            <p>键盘自由拆卸，灵活应对多变场景。</p>
+                        </div>
+                    </div>
+                    <div class="mode-card">
+                        <img src="assets/mode3.jpg" class="mode-image" alt="观影模式">
+                        <div class="mode-info">
+                            <h3>平板模式</h3>
+                            <p>磁吸稳固支撑，沉浸式影音享受。</p>
+                        </div>
+                    </div>
+                    <div class="mode-card">
+                        <img src="assets/mode4.jpg" class="mode-image" alt="阅读模式">
+                        <div class="mode-info">
+                            <h3>阅读模式</h3>
+                            <p>极致轻薄贴合，单手轻松掌控。</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="carousel-dots" id="carouselDots">
+                <div class="dot active"></div>
+                <div class="dot"></div>
+                <div class="dot"></div>
+                <div class="dot"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer-section">
+        <div class="footer-content">
+            <div class="footer-subtitle reveal" style="transition-delay: 0.1s;">悍能键盘保护套</div>
+            <div class="footer-title reveal" style="transition-delay: 0.3s;">顺手，不止一点</div>
+            <div class="footer-buttons reveal" style="transition-delay: 0.5s;">
+                <a href="#" class="footer-btn btn-primary">立即订购</a>
+                <a href="#" class="footer-btn btn-secondary">查看详情</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // 1. 核心配置参数
+        // ==========================================
+        const startFrame = 0;
+        const endFrame = 749;
+        const totalFrames = endFrame - startFrame + 1;
+        
+        // 自动识别双端素材路径
+        const framePath = (index) => {
+            const paddedIndex = String(index).padStart(3, '0');
+            if (window.innerWidth <= 768) {
+                return `assets/mobile/a_${paddedIndex}.webp`;
+            } else {
+                return `assets/a${paddedIndex}.webp`;
+            }
+        }; 
+        
+        const easeAmount = 0.12; 
+
+        // ==========================================
+        // 2. DOM 元素获取 & 全局性能缓存池
+        // ==========================================
+        const canvas = document.getElementById('sequence-canvas');
+        const hero = document.getElementById('hero'); 
+        const canvasWrapper = document.getElementById('main-canvas-wrapper');
+        const ctx = canvas.getContext('2d');
+        const container = document.querySelector('.scrollytelling-container');
+        const textSections = document.querySelectorAll('.sticky-text-content'); 
+        
+        const modesSection = document.getElementById('modesSection');
+        const track = document.getElementById('carouselTrack');
+        const dots = document.querySelectorAll('.dot');
+        const cards = document.querySelectorAll('.mode-card');
+
+        const images = [];
+        let loadedCount = 0;
+        let currentProgress = 0;
+        let smoothedProgress = 0;
+        let currentCarouselIndex = 0;
+        let appStarted = false;
+
+        // 性能优化：仅缓存 Canvas 的参数，绝不再乱动 Sticky 文字的位置！
+        let cachedMetrics = {
+            vh: 0,
+            canvasRenderWidth: 0,
+            canvasRenderHeight: 0,
+            imgRatio: 0,
+            imgShiftX: 0,
+            imgShiftY: 0
+        };
+
+        // ==========================================
+        // 3. 工具函数
+        // ==========================================
+        function clamp(value, min, max) {
+            return Math.min(Math.max(value, min), max);
+        }
+
+        // ==========================================
+        // 4. 苹果风展示区：居中 + 滚轮切换
+        // ==========================================
+        function updateCarousel(index) {
+            if (!track || !cards.length) return;
+            index = clamp(index, 0, cards.length - 1);
+            currentCarouselIndex = index;
+            const cardWidth = cards[0].offsetWidth;
+            const computedStyle = window.getComputedStyle(track);
+            const gap = parseFloat(computedStyle.columnGap || computedStyle.gap) || 40;
+            const step = cardWidth + gap;
+            const translateX = window.innerWidth / 2 - cardWidth / 2 - index * step;
+            track.style.transform = `translate3d(${translateX}px, 0, 0)`;
+            cards.forEach((card, i) => {
+                card.classList.toggle('active', i === index);
+                card.classList.toggle('prev', i === index - 1);
+                card.classList.toggle('next', i === index + 1);
+            });
+            dots.forEach((dot, i) => {
+                dot.classList.toggle('active', i === index);
+            });
+        }
+
+        function updateCarouselByScroll() {
+            if (!modesSection || !cards.length) return;
+            const sectionTop = modesSection.offsetTop;
+            const sectionHeight = modesSection.offsetHeight;
+            const scrollY = window.scrollY;
+            const start = sectionTop;
+            const end = sectionTop + sectionHeight - cachedMetrics.vh;
+            const progress = clamp((scrollY - start) / (end - start), 0, 1);
+            const targetIndex = Math.round(progress * (cards.length - 1));
+            updateCarousel(targetIndex);
+        }
+
+        dots.forEach((dot, i) => {
+            dot.addEventListener('click', () => {
+                if (!modesSection || !cards.length) return;
+                const sectionTop = modesSection.offsetTop;
+                const sectionHeight = modesSection.offsetHeight;
+                const start = sectionTop;
+                const end = sectionTop + sectionHeight - cachedMetrics.vh;
+                const progress = i / (cards.length - 1);
+                window.scrollTo({ top: start + progress * (end - start), behavior: 'smooth' });
+            });
+        });
+
+        // ==========================================
+        // 5. 3D 序列帧极限预加载
+        // ==========================================
+        function preloadImages() {
+            const priorityFrames = 30; // 优先加载前30帧保证首屏秒开
+            let currentIndex = startFrame;
+
+            function loadBatch(amount) {
+                const end = Math.min(currentIndex + amount - 1, endFrame);
+                if (currentIndex > endFrame) return;
+                for (let i = currentIndex; i <= end; i++) {
+                    const img = new Image();
+                    img.src = framePath(i);
+                    img.onload = img.onerror = () => { 
+                        loadedCount++; 
+                        // 一旦第一张图片加载完成，立即计算其最佳缩放比例
+                        if (loadedCount === 1) calculateImageMetrics(img);
+                    };
+                    images[i] = img; 
+                }
+                currentIndex = end + 1;
+            }
+
+            loadBatch(priorityFrames);
+
+            const checkInit = setInterval(() => {
+                if (loadedCount >= priorityFrames && !appStarted) {
+                    clearInterval(checkInit);
+                    appStarted = true;
+                    initApp(); 
+                    lazyLoadRest(); 
+                }
+            }, 100);
+
+            function lazyLoadRest() {
+                if (currentIndex > endFrame) return;
+                loadBatch(5); 
+                setTimeout(lazyLoadRest, 100); 
+            }
+        }
+
+        // ==========================================
+        // 6. 高清 Canvas 适配与图片缩放计算
+        // ==========================================
+        function resizeCanvasHighDPI() {
+            const dpr = window.devicePixelRatio || 1;
+            cachedMetrics.vh = window.innerHeight;
+            
+            canvas.width = window.innerWidth * dpr;
+            canvas.height = window.innerHeight * dpr;
+            
+            canvas.style.width = `${window.innerWidth}px`;
+            canvas.style.height = `${window.innerHeight}px`;
+            
+            cachedMetrics.canvasRenderWidth = canvas.width;
+            cachedMetrics.canvasRenderHeight = canvas.height;
+
+            if (images[0] && images[0].complete) {
+                calculateImageMetrics(images[0]);
+            }
+        }
+
+        function calculateImageMetrics(img) {
+            if (!img || img.naturalWidth === 0) return;
+            cachedMetrics.imgRatio = Math.min(cachedMetrics.canvasRenderWidth / img.width, cachedMetrics.canvasRenderHeight / img.height);
+            cachedMetrics.imgShiftX = (cachedMetrics.canvasRenderWidth - img.width * cachedMetrics.imgRatio) / 2;
+            cachedMetrics.imgShiftY = (cachedMetrics.canvasRenderHeight - img.height * cachedMetrics.imgRatio) / 2;
+        }
+
+        // ==========================================
+        // 7. 初始化与事件监听
+        // ==========================================
+        function initApp() {
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => { 
+                    if(entry.isIntersecting) { entry.target.classList.add('active'); }
+                });
+            }, { threshold: 0.1 });
+            
+            document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+            window.addEventListener('scroll', () => {
+                const rect = container.getBoundingClientRect();
+                let maxScroll = container.offsetHeight - cachedMetrics.vh; 
+                let scrolledPx = Math.max(0, -rect.top); 
+                
+                currentProgress = Math.min(1, Math.max(0, scrolledPx / maxScroll));
+
+                hero.style.opacity = 1 - Math.min(window.scrollY / cachedMetrics.vh, 1);
+                hero.style.filter = `blur(${Math.min(window.scrollY / cachedMetrics.vh, 1) * 20}px)`;
+
+                if (rect.bottom <= cachedMetrics.vh) {
+                    let out = 1 - (rect.bottom / cachedMetrics.vh);
+                    canvasWrapper.style.opacity = 1 - out; 
+                    canvasWrapper.style.filter = `blur(${out * 20}px)`;
+                } else {
+                    canvasWrapper.style.opacity = 1; 
+                    canvasWrapper.style.filter = 'blur(0px)';
+                }
+
+                updateCarouselByScroll();
+            }, { passive: true });
+
+            updateCarouselByScroll();
+            renderLoop();
+        }
+
+        // ==========================================
+        // 8. 核心渲染循环引擎 (退回稳定的文字动画逻辑)
+        // ==========================================
+        function renderLoop() {
+            smoothedProgress += (currentProgress - smoothedProgress) * easeAmount;
+            
+            const progress = Math.min(smoothedProgress, 1);
+            const idx = Math.floor(progress * (totalFrames - 1));
+            const img = images[idx];
+            
+            // 👉 画图片：依然享受缓存的高清性能红利
+            if (img && img.complete && img.naturalWidth > 0 && cachedMetrics.imgRatio > 0) {
+                ctx.clearRect(0, 0, cachedMetrics.canvasRenderWidth, cachedMetrics.canvasRenderHeight);
+                ctx.drawImage(
+                    img, 0, 0, img.width, img.height, 
+                    cachedMetrics.imgShiftX, cachedMetrics.imgShiftY, 
+                    img.width * cachedMetrics.imgRatio, img.height * cachedMetrics.imgRatio
+                );
+            }
+            
+            // 👉 画文字：彻底还给你原版的文字渐隐渐现+模糊逻辑！
+            textSections.forEach(s => {
+                const r = s.getBoundingClientRect();
+                const centerY = r.top + r.height / 2;
+                const vh = cachedMetrics.vh || window.innerHeight;
+                
+                let opacity = 1;
+                let blur = 0;
+                
+                if (centerY < vh * 0.2) { 
+                    opacity = Math.max(0, centerY / (vh * 0.2)); 
+                    blur = (1 - opacity) * 15; 
+                } else if (centerY > vh * 0.8) { 
+                    opacity = Math.max(0, (vh - centerY) / (vh * 0.2)); 
+                    blur = (1 - opacity) * 10; 
+                }
+                
+                s.style.opacity = opacity; 
+                s.style.filter = `blur(${blur}px)`;
+            });
+            
+            requestAnimationFrame(renderLoop);
+        }
+
+        // ==========================================
+        // 9. 窗口尺寸调整监听
+        // ==========================================
+        let resizeTimer;
+        window.addEventListener('resize', () => { 
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(() => {
+                resizeCanvasHighDPI();
+                updateCarousel(currentCarouselIndex);
+                updateCarouselByScroll();
+                window.dispatchEvent(new Event('scroll'));
+            }, 100);
+        });
+        
+        // ==========================================
+        // 10. 执行启动
+        // ==========================================
+        resizeCanvasHighDPI();
+        updateCarousel(0);
+        preloadImages();
+    </script>
+</body>
+</html>
