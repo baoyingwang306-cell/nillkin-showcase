@@ -346,15 +346,14 @@
         let currentCarouselIndex = 0;
         let appStarted = false;
 
-        // 🔥 性能优化：缓存所有计算极其昂贵的 DOM 位置和尺寸参数
+        // 性能优化：仅缓存 Canvas 的参数，绝不再乱动 Sticky 文字的位置！
         let cachedMetrics = {
             vh: 0,
             canvasRenderWidth: 0,
             canvasRenderHeight: 0,
             imgRatio: 0,
             imgShiftX: 0,
-            imgShiftY: 0,
-            textTops: []
+            imgShiftY: 0
         };
 
         // ==========================================
@@ -426,7 +425,7 @@
                     img.src = framePath(i);
                     img.onload = img.onerror = () => { 
                         loadedCount++; 
-                        // 🔥 一旦第一张图片加载完成，立即计算其最佳缩放比例并缓存
+                        // 一旦第一张图片加载完成，立即计算其最佳缩放比例
                         if (loadedCount === 1) calculateImageMetrics(img);
                     };
                     images[i] = img; 
@@ -434,20 +433,17 @@
                 currentIndex = end + 1;
             }
 
-            // 发出首批30张的请求
             loadBatch(priorityFrames);
 
-            // 监听首批是否加载完毕
             const checkInit = setInterval(() => {
                 if (loadedCount >= priorityFrames && !appStarted) {
                     clearInterval(checkInit);
                     appStarted = true;
                     initApp(); 
-                    lazyLoadRest(); // 启动后台排队下载
+                    lazyLoadRest(); 
                 }
             }, 100);
 
-            // 剩下的每次悄悄下 5 张，不堵塞手机滑动
             function lazyLoadRest() {
                 if (currentIndex > endFrame) return;
                 loadBatch(5); 
@@ -456,37 +452,26 @@
         }
 
         // ==========================================
-        // 6. 高清 Canvas 适配与缓存计算 (核心性能优化)
+        // 6. 高清 Canvas 适配与图片缩放计算
         // ==========================================
         function resizeCanvasHighDPI() {
-            // 获取设备的物理像素比
             const dpr = window.devicePixelRatio || 1;
             cachedMetrics.vh = window.innerHeight;
             
-            // 内部渲染尺寸放大 dpr 倍
             canvas.width = window.innerWidth * dpr;
             canvas.height = window.innerHeight * dpr;
             
-            // CSS 视觉尺寸保持不变
             canvas.style.width = `${window.innerWidth}px`;
             canvas.style.height = `${window.innerHeight}px`;
             
             cachedMetrics.canvasRenderWidth = canvas.width;
             cachedMetrics.canvasRenderHeight = canvas.height;
 
-            // 缓存文字块距离顶部的位置，坚决不要在滚动时去算
-            cachedMetrics.textTops = Array.from(textSections).map(s => {
-                const rect = s.getBoundingClientRect();
-                return rect.top + window.scrollY + rect.height / 2; // 直接算出中心点Y坐标
-            });
-
-            // 重新计算图片缩放参数
             if (images[0] && images[0].complete) {
                 calculateImageMetrics(images[0]);
             }
         }
 
-        // 仅在窗口变化或首图加载时计算图片排版，而不是每秒算 60 次
         function calculateImageMetrics(img) {
             if (!img || img.naturalWidth === 0) return;
             cachedMetrics.imgRatio = Math.min(cachedMetrics.canvasRenderWidth / img.width, cachedMetrics.canvasRenderHeight / img.height);
@@ -506,13 +491,11 @@
             
             document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
 
-            // 使用 passive: true 极大提升移动端滚动流畅度
             window.addEventListener('scroll', () => {
                 const rect = container.getBoundingClientRect();
                 let maxScroll = container.offsetHeight - cachedMetrics.vh; 
                 let scrolledPx = Math.max(0, -rect.top); 
                 
-                // 给出一个微小的容错率，防止极速滑动时最后一帧卡顿
                 currentProgress = Math.min(1, Math.max(0, scrolledPx / maxScroll));
 
                 hero.style.opacity = 1 - Math.min(window.scrollY / cachedMetrics.vh, 1);
@@ -535,17 +518,16 @@
         }
 
         // ==========================================
-        // 8. 核心渲染循环引擎 (纯净输出版)
+        // 8. 核心渲染循环引擎 (退回稳定的文字动画逻辑)
         // ==========================================
         function renderLoop() {
             smoothedProgress += (currentProgress - smoothedProgress) * easeAmount;
             
-            // 确保进度能稳稳走到 1.0 (第 749 帧)，不丢帧
             const progress = Math.min(smoothedProgress, 1);
             const idx = Math.floor(progress * (totalFrames - 1));
             const img = images[idx];
             
-            // 🔥 直接调用缓存参数画图，性能拉满
+            // 👉 画图片：依然享受缓存的高清性能红利
             if (img && img.complete && img.naturalWidth > 0 && cachedMetrics.imgRatio > 0) {
                 ctx.clearRect(0, 0, cachedMetrics.canvasRenderWidth, cachedMetrics.canvasRenderHeight);
                 ctx.drawImage(
@@ -555,22 +537,23 @@
                 );
             }
             
-            // 🔥 纯内存计算文字动画，不触发 DOM 回流
-            const scrollY = window.scrollY;
-            textSections.forEach((s, index) => {
-                const centerY = cachedMetrics.textTops[index] - scrollY;
+            // 👉 画文字：彻底还给你原版的文字渐隐渐现+模糊逻辑！
+            textSections.forEach(s => {
+                const r = s.getBoundingClientRect();
+                const centerY = r.top + r.height / 2;
+                const vh = cachedMetrics.vh || window.innerHeight;
+                
                 let opacity = 1;
                 let blur = 0;
                 
-                if (centerY < cachedMetrics.vh * 0.2) { 
-                    opacity = Math.max(0, centerY / (cachedMetrics.vh * 0.2)); 
+                if (centerY < vh * 0.2) { 
+                    opacity = Math.max(0, centerY / (vh * 0.2)); 
                     blur = (1 - opacity) * 15; 
-                } else if (centerY > cachedMetrics.vh * 0.8) { 
-                    opacity = Math.max(0, (cachedMetrics.vh - centerY) / (cachedMetrics.vh * 0.2)); 
+                } else if (centerY > vh * 0.8) { 
+                    opacity = Math.max(0, (vh - centerY) / (vh * 0.2)); 
                     blur = (1 - opacity) * 10; 
                 }
                 
-                // 仅在视觉需要改变时才操作 DOM
                 s.style.opacity = opacity; 
                 s.style.filter = `blur(${blur}px)`;
             });
@@ -584,7 +567,6 @@
         let resizeTimer;
         window.addEventListener('resize', () => { 
             clearTimeout(resizeTimer);
-            // 防抖：拖拽完毕后再重新计算，不至于把浏览器卡死
             resizeTimer = setTimeout(() => {
                 resizeCanvasHighDPI();
                 updateCarousel(currentCarouselIndex);
