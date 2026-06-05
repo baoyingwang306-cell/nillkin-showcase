@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>NILLKIN 悍能无畏 - 高级商业展示</title>
+    
+    <link rel="preload" href="assets/mobile/a_000.webp" as="image" media="(max-width: 768px)">
+    <link rel="preload" href="assets/a000.webp" as="image" media="(min-width: 769px)">
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&family=Montserrat:wght@400;500;700;900&display=swap" rel="stylesheet">
@@ -318,7 +322,7 @@
         const framePath = (index) => {
             const paddedIndex = String(index).padStart(3, '0');
             if (isMobile) {
-                return `assets/mobile/a${paddedIndex}.webp`; // 移动端 375 张
+                return `assets/mobile/a${paddedIndex}.webp`; // ⚠️ 已修正为 .webp
             } else {
                 return `assets/a${paddedIndex}.webp`;         // 桌面端 750 张
             }
@@ -444,7 +448,7 @@
                     appStarted = true;
                     initApp(); 
                     
-                    // 【交通管制】主 HTML 资源（含 4 张展示图）彻底载入后再激活剩余序列后台下载
+                    // 【交通管制】主 HTML 资源彻底载入后再激活剩余序列后台下载
                     if (document.readyState === 'complete') {
                         lazyLoadRest();
                     } else {
@@ -535,17 +539,15 @@
         }
 
         // ==========================================
-        // 8. 核心渲染循环引擎 (帧级滚动缩放完美对齐)
+        // 8. 核心渲染循环引擎
         // ==========================================
         function renderLoop() {
             smoothedProgress += (currentProgress - smoothedProgress) * easeAmount;
             
             const progress = Math.min(smoothedProgress, 1);
-            // 这里会自动根据电脑（749）或手机（374）的范围计算出精准的目标帧
             const idx = Math.floor(progress * (totalFrames - 1));
             const img = images[idx];
             
-            // 👉 画图片：调用缓存的高清参数
             if (img && img.complete && img.naturalWidth > 0 && cachedMetrics.imgRatio > 0) {
                 ctx.clearRect(0, 0, cachedMetrics.canvasRenderWidth, cachedMetrics.canvasRenderHeight);
                 ctx.drawImage(
@@ -555,7 +557,6 @@
                 );
             }
             
-            // 👉 画文字：原版动态模糊逻辑
             textSections.forEach(s => {
                 const r = s.getBoundingClientRect();
                 const centerY = r.top + r.height / 2;
