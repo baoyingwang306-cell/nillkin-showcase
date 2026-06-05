@@ -346,7 +346,7 @@
         let currentCarouselIndex = 0;
         let appStarted = false;
 
-        // 仅缓存 Canvas 的参数，保留 Sticky 文字的动态计算
+        // 性能优化缓存池
         let cachedMetrics = {
             vh: 0,
             canvasRenderWidth: 0,
@@ -411,10 +411,10 @@
         });
 
         // ==========================================
-        // 5. 🔥 3D 序列帧极限预加载 (分段排队优化)
+        // 5. 3D 序列帧分段流式加载机制
         // ==========================================
         function preloadImages() {
-            const priorityFrames = 30; // 优先加载前30帧保证首屏秒开
+            const priorityFrames = 30; // 优先加载前30帧保证秒开
             let currentIndex = startFrame;
 
             function loadBatch(amount) {
@@ -425,7 +425,6 @@
                     img.src = framePath(i);
                     img.onload = img.onerror = () => { 
                         loadedCount++; 
-                        // 一旦第一张图片加载完成，立即计算其最佳缩放比例
                         if (loadedCount === 1) calculateImageMetrics(img);
                     };
                     images[i] = img; 
@@ -433,24 +432,32 @@
                 currentIndex = end + 1;
             }
 
-            // 1. 发起首批请求
+            // 【步骤一】VIP 专用通道：全速且仅发出前 30 张图片请求
             loadBatch(priorityFrames);
 
-            // 2. 高频轮询：一旦前 30 帧加载完，立刻启动页面交互
+            // 【步骤二】高频侦听轮询：只要首批 30 张就位，立刻解除白屏
             const checkInit = setInterval(() => {
                 if (loadedCount >= priorityFrames && !appStarted) {
                     clearInterval(checkInit);
                     appStarted = true;
                     initApp(); 
-                    lazyLoadRest(); // 3. 启动后台排队静默下载
+                    
+                    // 🔥【交通管制关键优化】🔥
+                    // 等到整个 window 的 load 事件触发（即主 HTML 里的 4 张轮播图彻底下载完后），
+                    // 再允许后台去排队偷偷下载剩下的 720 张序列帧，完美防止网络被死死堵住。
+                    if (document.readyState === 'complete') {
+                        lazyLoadRest();
+                    } else {
+                        window.addEventListener('load', lazyLoadRest);
+                    }
                 }
             }, 100);
 
-            // 4. 后台队列：剩下的每次悄悄下 5 张，给滑动留出网络通道
+            // 【步骤三】后台排队静默下载队列
             function lazyLoadRest() {
                 if (currentIndex > endFrame) return;
-                loadBatch(5); 
-                setTimeout(lazyLoadRest, 100); 
+                loadBatch(5); // 每次轻量请求 5 张
+                setTimeout(lazyLoadRest, 120); // 间隔微调至 120ms，给移动端留出充足的喘息时间
             }
         }
 
@@ -494,7 +501,6 @@
             
             document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
 
-            // 使用 passive: true 提升移动端滚动流畅度
             window.addEventListener('scroll', () => {
                 const rect = container.getBoundingClientRect();
                 let maxScroll = container.offsetHeight - cachedMetrics.vh; 
@@ -517,6 +523,13 @@
                 updateCarouselByScroll();
             }, { passive: true });
 
+            // 🔥 当页面完全加载完成时，额外强制让浏览器重新计算一次卡片排版
+            window.addEventListener('load', () => {
+                resizeCanvasHighDPI();
+                updateCarousel(currentCarouselIndex);
+                updateCarouselByScroll();
+            });
+
             updateCarouselByScroll();
             renderLoop();
         }
@@ -531,7 +544,6 @@
             const idx = Math.floor(progress * (totalFrames - 1));
             const img = images[idx];
             
-            // 👉 画图片：调用缓存的高清参数
             if (img && img.complete && img.naturalWidth > 0 && cachedMetrics.imgRatio > 0) {
                 ctx.clearRect(0, 0, cachedMetrics.canvasRenderWidth, cachedMetrics.canvasRenderHeight);
                 ctx.drawImage(
@@ -541,7 +553,6 @@
                 );
             }
             
-            // 👉 画文字：原版动态模糊逻辑
             textSections.forEach(s => {
                 const r = s.getBoundingClientRect();
                 const centerY = r.top + r.height / 2;
