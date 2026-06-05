@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>NILLKIN 悍能无畏 - 高级商业展示</title>
     
-    <link rel="preload" href="assets/mobile/a_000.webp" as="image" media="(max-width: 768px)">
+    <link rel="preload" href="assets/mobile/a000.webp" as="image" media="(max-width: 768px)">
     <link rel="preload" href="assets/a000.webp" as="image" media="(min-width: 769px)">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -318,13 +318,13 @@
         const endFrame = isMobile ? 374 : 749; 
         const totalFrames = endFrame - startFrame + 1;
         
-        // 自动识别双端素材路径
+        // 👉 彻底修复：移动端文件名无下划线，且保证为 .webp
         const framePath = (index) => {
             const paddedIndex = String(index).padStart(3, '0');
             if (isMobile) {
-                return `assets/mobile/a${paddedIndex}.webp`; // ⚠️ 已修正为 .webp
+                return `assets/mobile/a${paddedIndex}.webp`; 
             } else {
-                return `assets/a${paddedIndex}.webp`;         // 桌面端 750 张
+                return `assets/a${paddedIndex}.webp`;         
             }
         }; 
         
