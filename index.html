@@ -64,7 +64,7 @@
         .scrollytelling-container { position: relative; width: 100%; }
         .canvas-container { position: -webkit-sticky; position: sticky; top: 0; width: 100%; height: 100vh; z-index: 1; }
         
-        /* 🔥 关键优化：强制开启 GPU 硬件加速，极大地缓解移动端卡顿 🔥 */
+        /* 强制开启 GPU 硬件加速 */
         canvas { 
             width: 100%; height: 100%; display: block; 
             transform: translateZ(0); 
@@ -346,7 +346,7 @@
         let currentCarouselIndex = 0;
         let appStarted = false;
 
-        // 性能优化：仅缓存 Canvas 的参数，绝不再乱动 Sticky 文字的位置！
+        // 仅缓存 Canvas 的参数，保留 Sticky 文字的动态计算
         let cachedMetrics = {
             vh: 0,
             canvasRenderWidth: 0,
@@ -411,7 +411,7 @@
         });
 
         // ==========================================
-        // 5. 3D 序列帧极限预加载
+        // 5. 🔥 3D 序列帧极限预加载 (分段排队优化)
         // ==========================================
         function preloadImages() {
             const priorityFrames = 30; // 优先加载前30帧保证首屏秒开
@@ -433,17 +433,20 @@
                 currentIndex = end + 1;
             }
 
+            // 1. 发起首批请求
             loadBatch(priorityFrames);
 
+            // 2. 高频轮询：一旦前 30 帧加载完，立刻启动页面交互
             const checkInit = setInterval(() => {
                 if (loadedCount >= priorityFrames && !appStarted) {
                     clearInterval(checkInit);
                     appStarted = true;
                     initApp(); 
-                    lazyLoadRest(); 
+                    lazyLoadRest(); // 3. 启动后台排队静默下载
                 }
             }, 100);
 
+            // 4. 后台队列：剩下的每次悄悄下 5 张，给滑动留出网络通道
             function lazyLoadRest() {
                 if (currentIndex > endFrame) return;
                 loadBatch(5); 
@@ -491,6 +494,7 @@
             
             document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
 
+            // 使用 passive: true 提升移动端滚动流畅度
             window.addEventListener('scroll', () => {
                 const rect = container.getBoundingClientRect();
                 let maxScroll = container.offsetHeight - cachedMetrics.vh; 
@@ -518,7 +522,7 @@
         }
 
         // ==========================================
-        // 8. 核心渲染循环引擎 (退回稳定的文字动画逻辑)
+        // 8. 核心渲染循环引擎
         // ==========================================
         function renderLoop() {
             smoothedProgress += (currentProgress - smoothedProgress) * easeAmount;
@@ -527,7 +531,7 @@
             const idx = Math.floor(progress * (totalFrames - 1));
             const img = images[idx];
             
-            // 👉 画图片：依然享受缓存的高清性能红利
+            // 👉 画图片：调用缓存的高清参数
             if (img && img.complete && img.naturalWidth > 0 && cachedMetrics.imgRatio > 0) {
                 ctx.clearRect(0, 0, cachedMetrics.canvasRenderWidth, cachedMetrics.canvasRenderHeight);
                 ctx.drawImage(
@@ -537,7 +541,7 @@
                 );
             }
             
-            // 👉 画文字：彻底还给你原版的文字渐隐渐现+模糊逻辑！
+            // 👉 画文字：原版动态模糊逻辑
             textSections.forEach(s => {
                 const r = s.getBoundingClientRect();
                 const centerY = r.top + r.height / 2;
