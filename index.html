@@ -448,12 +448,8 @@
                     appStarted = true;
                     initApp(); 
                     
-                    // 【交通管制】主 HTML 资源彻底载入后再激活剩余序列后台下载
-                    if (document.readyState === 'complete') {
-                        lazyLoadRest();
-                    } else {
-                        window.addEventListener('load', lazyLoadRest);
-                    }
+                    // 🔥 提速策略：首屏画面一出来，不再等待其他大图，200ms后直接启动后台静默队列
+                    setTimeout(lazyLoadRest, 200);
                 }
             }, 100);
 
