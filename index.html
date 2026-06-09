@@ -4,10 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>NILLKIN 悍能无畏 - 高级商业展示</title>
-    
-    <link rel="preload" href="assets/mobile/a000.webp" as="image" media="(max-width: 768px)">
-    <link rel="preload" href="assets/a000.webp" as="image" media="(min-width: 769px)">
-
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&family=Montserrat:wght@400;500;700;900&display=swap" rel="stylesheet">
@@ -310,21 +306,19 @@
 
     <script>
         // ==========================================
-        // 1. 核心配置参数 (动态识别设备帧率控制)
+        // 1. 核心配置参数
         // ==========================================
-        const isMobile = window.innerWidth <= 768; // 是否为移动端
         const startFrame = 0;
-        // 核心改动：手机端控制到 374，桌面端控制到 749
-        const endFrame = isMobile ? 374 : 749; 
+        const endFrame = 749;
         const totalFrames = endFrame - startFrame + 1;
         
-        // 👉 彻底修复：移动端文件名无下划线，且保证为 .webp
+        // 自动识别双端素材路径
         const framePath = (index) => {
             const paddedIndex = String(index).padStart(3, '0');
-            if (isMobile) {
-                return `assets/mobile/a${paddedIndex}.webp`; 
+            if (window.innerWidth <= 768) {
+                return `assets/mobile/a_${paddedIndex}.webp`;
             } else {
-                return `assets/a${paddedIndex}.webp`;         
+                return `assets/a${paddedIndex}.webp`;
             }
         }; 
         
@@ -420,7 +414,7 @@
         // 5. 3D 序列帧分段流式加载机制
         // ==========================================
         function preloadImages() {
-            const priorityFrames = isMobile ? 15 : 30; // 手机端由于总数折半，首批只需加载 15 帧
+            const priorityFrames = 30; // 优先加载前30帧保证秒开
             let currentIndex = startFrame;
 
             function loadBatch(amount) {
@@ -438,26 +432,32 @@
                 currentIndex = end + 1;
             }
 
-            // 【步骤一】优先全速下载首屏帧
+            // 【步骤一】VIP 专用通道：全速且仅发出前 30 张图片请求
             loadBatch(priorityFrames);
 
-            // 【步骤二】轮询就绪状态
+            // 【步骤二】高频侦听轮询：只要首批 30 张就位，立刻解除白屏
             const checkInit = setInterval(() => {
                 if (loadedCount >= priorityFrames && !appStarted) {
                     clearInterval(checkInit);
                     appStarted = true;
                     initApp(); 
                     
-                    // 🔥 提速策略：首屏画面一出来，不再等待其他大图，200ms后直接启动后台静默队列
-                    setTimeout(lazyLoadRest, 200);
+                    // 🔥【交通管制关键优化】🔥
+                    // 等到整个 window 的 load 事件触发（即主 HTML 里的 4 张轮播图彻底下载完后），
+                    // 再允许后台去排队偷偷下载剩下的 720 张序列帧，完美防止网络被死死堵住。
+                    if (document.readyState === 'complete') {
+                        lazyLoadRest();
+                    } else {
+                        window.addEventListener('load', lazyLoadRest);
+                    }
                 }
             }, 100);
 
-            // 【步骤三】后台静默下载队列
+            // 【步骤三】后台排队静默下载队列
             function lazyLoadRest() {
                 if (currentIndex > endFrame) return;
-                loadBatch(5); 
-                setTimeout(lazyLoadRest, 120); 
+                loadBatch(5); // 每次轻量请求 5 张
+                setTimeout(lazyLoadRest, 120); // 间隔微调至 120ms，给移动端留出充足的喘息时间
             }
         }
 
@@ -523,7 +523,7 @@
                 updateCarouselByScroll();
             }, { passive: true });
 
-            // 页面全载入时重新校准一次卡片尺寸
+            // 🔥 当页面完全加载完成时，额外强制让浏览器重新计算一次卡片排版
             window.addEventListener('load', () => {
                 resizeCanvasHighDPI();
                 updateCarousel(currentCarouselIndex);
