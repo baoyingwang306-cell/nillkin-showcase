@@ -316,7 +316,7 @@
         const framePath = (index) => {
             const paddedIndex = String(index).padStart(3, '0');
             if (window.innerWidth <= 768) {
-                return `assets/mobile/a_${paddedIndex}.webp`;
+                return `assets/mobile/a${paddedIndex}.webp`;
             } else {
                 return `assets/a${paddedIndex}.webp`;
             }
