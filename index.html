@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>NILLKIN 悍能无畏 - 高级商业展示</title>
+    
+    <link rel="preload" href="assets/mobile/a000.webp" as="image" media="(max-width: 768px)">
+    <link rel="preload" href="assets/a000.webp" as="image" media="(min-width: 769px)">
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&family=Montserrat:wght@400;500;700;900&display=swap" rel="stylesheet">
@@ -306,19 +310,20 @@
 
     <script>
         // ==========================================
-        // 1. 核心配置参数
+        // 1. 🔥 核心更新：双端独立总帧率控制 🔥
         // ==========================================
+        const isMobile = window.innerWidth <= 768; 
         const startFrame = 0;
-        const endFrame = 749;
+        // 如果是手机，总图片数变为 375（0-374）；否则保持 750（0-749）
+        const endFrame = isMobile ? 374 : 749; 
         const totalFrames = endFrame - startFrame + 1;
         
-        // 自动识别双端素材路径
         const framePath = (index) => {
             const paddedIndex = String(index).padStart(3, '0');
-            if (window.innerWidth <= 768) {
-                return `assets/mobile/a${paddedIndex}.webp`;
+            if (isMobile) {
+                return `assets/mobile/a${paddedIndex}.webp`; 
             } else {
-                return `assets/a${paddedIndex}.webp`;
+                return `assets/a${paddedIndex}.webp`;         
             }
         }; 
         
@@ -346,7 +351,6 @@
         let currentCarouselIndex = 0;
         let appStarted = false;
 
-        // 性能优化缓存池
         let cachedMetrics = {
             vh: 0,
             canvasRenderWidth: 0,
@@ -357,15 +361,12 @@
         };
 
         // ==========================================
-        // 3. 工具函数
+        // 3. 辅助组件
         // ==========================================
         function clamp(value, min, max) {
             return Math.min(Math.max(value, min), max);
         }
 
-        // ==========================================
-        // 4. 苹果风展示区：居中 + 滚轮切换
-        // ==========================================
         function updateCarousel(index) {
             if (!track || !cards.length) return;
             index = clamp(index, 0, cards.length - 1);
@@ -411,58 +412,76 @@
         });
 
         // ==========================================
-        // 5. 3D 序列帧分段流式加载机制
+        // 4. 🔥 核心更新：交错式骨架预加载 🔥
         // ==========================================
         function preloadImages() {
-            const priorityFrames = 30; // 优先加载前30帧保证秒开
-            let currentIndex = startFrame;
+            const loadQueue = [];
+            // 骨架间隔：手机因为总共才 375 张，隔 10 帧抽一张作为骨架；电脑隔 20 帧
+            const skeletonStep = isMobile ? 10 : 20; 
 
-            function loadBatch(amount) {
-                const end = Math.min(currentIndex + amount - 1, endFrame);
-                if (currentIndex > endFrame) return;
-                for (let i = currentIndex; i <= end; i++) {
-                    const img = new Image();
-                    img.src = framePath(i);
-                    img.onload = img.onerror = () => { 
-                        loadedCount++; 
-                        if (loadedCount === 1) calculateImageMetrics(img);
-                    };
-                    images[i] = img; 
-                }
-                currentIndex = end + 1;
+            // 1. 绝对第一优先级：首帧
+            loadQueue.push(0);
+
+            // 2. 第二优先级：骨架抽帧 (优先铺满整个滚动轴，让用户随便划不黑屏)
+            for (let i = skeletonStep; i <= endFrame; i += skeletonStep) {
+                loadQueue.push(i);
             }
 
-            // 【步骤一】VIP 专用通道：全速且仅发出前 30 张图片请求
-            loadBatch(priorityFrames);
+            // 3. 第三优先级：填补剩下的所有细节帧
+            for (let i = 1; i <= endFrame; i++) {
+                if (i % skeletonStep !== 0) {
+                    loadQueue.push(i);
+                }
+            }
 
-            // 【步骤二】高频侦听轮询：只要首批 30 张就位，立刻解除白屏
+            let qIndex = 0;
+
+            function loadBatch(size) {
+                for (let i = 0; i < size; i++) {
+                    if (qIndex >= loadQueue.length) return;
+                    let frameIdx = loadQueue[qIndex++];
+                    let img = new Image();
+                    img.src = framePath(frameIdx);
+                    img.onload = img.onerror = () => { 
+                        loadedCount++; 
+                        if (frameIdx === 0) {
+                            calculateImageMetrics(img);
+                            // 首帧一出来，立刻点亮页面，允许滑动
+                            if (!appStarted) {
+                                appStarted = true;
+                                initApp();
+                            }
+                        }
+                    };
+                    images[frameIdx] = img; 
+                }
+            }
+
+            // 立刻拉取首批关键骨架图（大概 10~15 张）
+            loadBatch(15);
+
+            // 轮询：只要首帧出了，页面允许交互了，立刻启动后台排队下载
             const checkInit = setInterval(() => {
-                if (loadedCount >= priorityFrames && !appStarted) {
+                if (appStarted) {
                     clearInterval(checkInit);
-                    appStarted = true;
-                    initApp(); 
-                    
-                    // 🔥【交通管制关键优化】🔥
-                    // 等到整个 window 的 load 事件触发（即主 HTML 里的 4 张轮播图彻底下载完后），
-                    // 再允许后台去排队偷偷下载剩下的 720 张序列帧，完美防止网络被死死堵住。
                     if (document.readyState === 'complete') {
                         lazyLoadRest();
                     } else {
                         window.addEventListener('load', lazyLoadRest);
                     }
                 }
-            }, 100);
+            }, 50);
 
-            // 【步骤三】后台排队静默下载队列
             function lazyLoadRest() {
-                if (currentIndex > endFrame) return;
-                loadBatch(5); // 每次轻量请求 5 张
-                setTimeout(lazyLoadRest, 120); // 间隔微调至 120ms，给移动端留出充足的喘息时间
+                if (qIndex < loadQueue.length) {
+                    loadBatch(4); // 弱网下每次轻量要4张
+                    setTimeout(lazyLoadRest, 80); 
+                }
             }
         }
 
         // ==========================================
-        // 6. 高清 Canvas 适配与图片缩放计算
+        // 5. Canvas 适配与事件监听
         // ==========================================
         function resizeCanvasHighDPI() {
             const dpr = window.devicePixelRatio || 1;
@@ -489,9 +508,6 @@
             cachedMetrics.imgShiftY = (cachedMetrics.canvasRenderHeight - img.height * cachedMetrics.imgRatio) / 2;
         }
 
-        // ==========================================
-        // 7. 初始化与事件监听
-        // ==========================================
         function initApp() {
             const observer = new IntersectionObserver((entries) => {
                 entries.forEach(entry => { 
@@ -523,7 +539,6 @@
                 updateCarouselByScroll();
             }, { passive: true });
 
-            // 🔥 当页面完全加载完成时，额外强制让浏览器重新计算一次卡片排版
             window.addEventListener('load', () => {
                 resizeCanvasHighDPI();
                 updateCarousel(currentCarouselIndex);
@@ -535,21 +550,38 @@
         }
 
         // ==========================================
-        // 8. 核心渲染循环引擎
+        // 6. 🔥 核心更新：智能防黑屏就近补偿算法 🔥
         // ==========================================
+        function getNearestLoadedImage(idx) {
+            // 如果这一帧刚好下好了，完美，直接用
+            if (images[idx] && images[idx].complete && images[idx].naturalWidth > 0) {
+                return images[idx];
+            }
+            // 如果没下好（比如用户划太快了），立刻往前后找最近的骨架图顶替，坚决不黑屏！
+            for (let step = 1; step <= totalFrames; step++) {
+                let left = idx - step;
+                let right = idx + step;
+                if (left >= 0 && images[left] && images[left].complete && images[left].naturalWidth > 0) return images[left];
+                if (right <= endFrame && images[right] && images[right].complete && images[right].naturalWidth > 0) return images[right];
+            }
+            return null;
+        }
+
         function renderLoop() {
             smoothedProgress += (currentProgress - smoothedProgress) * easeAmount;
             
             const progress = Math.min(smoothedProgress, 1);
-            const idx = Math.floor(progress * (totalFrames - 1));
-            const img = images[idx];
+            const targetIdx = Math.floor(progress * (totalFrames - 1));
             
-            if (img && img.complete && img.naturalWidth > 0 && cachedMetrics.imgRatio > 0) {
+            // 启用骨架防黑屏补偿渲染
+            const imgToDraw = getNearestLoadedImage(targetIdx);
+            
+            if (imgToDraw && cachedMetrics.imgRatio > 0) {
                 ctx.clearRect(0, 0, cachedMetrics.canvasRenderWidth, cachedMetrics.canvasRenderHeight);
                 ctx.drawImage(
-                    img, 0, 0, img.width, img.height, 
+                    imgToDraw, 0, 0, imgToDraw.width, imgToDraw.height, 
                     cachedMetrics.imgShiftX, cachedMetrics.imgShiftY, 
-                    img.width * cachedMetrics.imgRatio, img.height * cachedMetrics.imgRatio
+                    imgToDraw.width * cachedMetrics.imgRatio, imgToDraw.height * cachedMetrics.imgRatio
                 );
             }
             
@@ -576,9 +608,6 @@
             requestAnimationFrame(renderLoop);
         }
 
-        // ==========================================
-        // 9. 窗口尺寸调整监听
-        // ==========================================
         let resizeTimer;
         window.addEventListener('resize', () => { 
             clearTimeout(resizeTimer);
@@ -590,9 +619,6 @@
             }, 100);
         });
         
-        // ==========================================
-        // 10. 执行启动
-        // ==========================================
         resizeCanvasHighDPI();
         updateCarousel(0);
         preloadImages();
