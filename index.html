@@ -133,7 +133,8 @@
 
             .sticky-text-content { padding: 0 8% !important; text-align: left !important; align-items: flex-start !important; }
             
-            .text-section:nth-child(1) .sticky-text-content { justify-content: flex-start 10% !important; padding-top: 5vh !important; }
+            /* 👉 修正了这里的 CSS 语法错误，确保第一屏排版正常 */
+            .text-section:nth-child(1) .sticky-text-content { justify-content: flex-start !important; padding-top: 10vh !important; }
             .text-section:nth-child(1) .sticky-text-content h2 { font-size: 1.8rem !important; line-height: 1.2 !important; margin-bottom: 0 !important; }
             .text-section:nth-child(1) .sticky-text-content p { font-size: 0.85rem !important; line-height: 1.5 !important; margin-top: 420px !important; margin-left: 0px !important; }
 
@@ -407,7 +408,7 @@
         });
 
         // ==========================================
-        // 4. 🔥 狂暴预加载：无视 onload，全速吞吐 🔥
+        // 4. 狂暴预加载：无视 onload，全速吞吐
         // ==========================================
         function preloadImages() {
             const loadQueue = [];
@@ -536,7 +537,7 @@
         }
 
         // ==========================================
-        // 6. 🔥 渲染引擎：智能补偿 + 静止休眠 🔥
+        // 6. 🔥 渲染引擎：智能补偿 + 文字动画脱离休眠锁 🔥
         // ==========================================
         function getNearestLoadedImage(idx) {
             if (images[idx] && images[idx].complete && images[idx].naturalWidth > 0) return images[idx];
@@ -549,14 +550,33 @@
             return null;
         }
 
-        // 用于记录上一帧的状态，避免重复渲染
         let lastDrawnIdx = -1;
 
         function renderLoop() {
-            // 计算平滑进度
             smoothedProgress += (currentProgress - smoothedProgress) * easeAmount;
             
-            // 🔥 性能杀手锏：如果用户没滑动（进度差异极小），直接跳过 Canvas 重绘，给手机降温！
+            // 👉 修复：将文字视差与模糊动画提取到休眠层之外，保证每帧都会更新透明度！
+            textSections.forEach(s => {
+                const r = s.getBoundingClientRect();
+                const centerY = r.top + r.height / 2;
+                const vh = cachedMetrics.vh || window.innerHeight;
+                
+                let opacity = 1;
+                let blur = 0;
+                
+                if (centerY < vh * 0.2) { 
+                    opacity = Math.max(0, centerY / (vh * 0.2)); 
+                    blur = (1 - opacity) * 15; 
+                } else if (centerY > vh * 0.8) { 
+                    opacity = Math.max(0, (vh - centerY) / (vh * 0.2)); 
+                    blur = (1 - opacity) * 10; 
+                }
+                
+                s.style.opacity = opacity; 
+                s.style.filter = `blur(${blur}px)`;
+            });
+
+            // 👉 休眠机制：只有当 Canvas 进度有差异时，才消耗性能去重绘 3D 图片
             if (Math.abs(currentProgress - smoothedProgress) > 0.0001 || lastDrawnIdx === -1) {
                 
                 const progress = Math.min(smoothedProgress, 1);
@@ -564,7 +584,6 @@
                 
                 const imgToDraw = getNearestLoadedImage(targetIdx);
                 
-                // 只有当需要画的图和上一张不同，且图已就绪时，才执行重绘
                 if (imgToDraw && cachedMetrics.imgRatio > 0 && imgToDraw !== images[lastDrawnIdx]) {
                     ctx.clearRect(0, 0, cachedMetrics.canvasRenderWidth, cachedMetrics.canvasRenderHeight);
                     ctx.drawImage(
@@ -572,30 +591,8 @@
                         cachedMetrics.imgShiftX, cachedMetrics.imgShiftY, 
                         imgToDraw.width * cachedMetrics.imgRatio, imgToDraw.height * cachedMetrics.imgRatio
                     );
-                    // 记录当前画的是哪一张
                     lastDrawnIdx = images.indexOf(imgToDraw);
                 }
-                
-                // 动态计算文字的视差与模糊
-                textSections.forEach(s => {
-                    const r = s.getBoundingClientRect();
-                    const centerY = r.top + r.height / 2;
-                    const vh = cachedMetrics.vh || window.innerHeight;
-                    
-                    let opacity = 1;
-                    let blur = 0;
-                    
-                    if (centerY < vh * 0.2) { 
-                        opacity = Math.max(0, centerY / (vh * 0.2)); 
-                        blur = (1 - opacity) * 15; 
-                    } else if (centerY > vh * 0.8) { 
-                        opacity = Math.max(0, (vh - centerY) / (vh * 0.2)); 
-                        blur = (1 - opacity) * 10; 
-                    }
-                    
-                    s.style.opacity = opacity; 
-                    s.style.filter = `blur(${blur}px)`;
-                });
             }
             
             requestAnimationFrame(renderLoop);
@@ -608,7 +605,7 @@
                 resizeCanvasHighDPI();
                 updateCarousel(currentCarouselIndex);
                 updateCarouselByScroll();
-                lastDrawnIdx = -1; // 强制在缩放后重绘一帧
+                lastDrawnIdx = -1; 
                 window.dispatchEvent(new Event('scroll'));
             }, 100);
         });
