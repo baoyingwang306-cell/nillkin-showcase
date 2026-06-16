@@ -133,8 +133,8 @@
 
             .sticky-text-content { padding: 0 8% !important; text-align: left !important; align-items: flex-start !important; }
             
-            /* 👉 修正了这里的 CSS 语法错误，确保第一屏排版正常 */
-            .text-section:nth-child(1) .sticky-text-content { justify-content: flex-start !important; padding-top: 10vh !important; }
+            /* 👉 修正：原封不动还原你最初的移动端第一屏文字排版参数 */
+            .text-section:nth-child(1) .sticky-text-content { justify-content: flex-start 10% !important; padding-top: 5vh !important; }
             .text-section:nth-child(1) .sticky-text-content h2 { font-size: 1.8rem !important; line-height: 1.2 !important; margin-bottom: 0 !important; }
             .text-section:nth-child(1) .sticky-text-content p { font-size: 0.85rem !important; line-height: 1.5 !important; margin-top: 420px !important; margin-left: 0px !important; }
 
@@ -555,7 +555,7 @@
         function renderLoop() {
             smoothedProgress += (currentProgress - smoothedProgress) * easeAmount;
             
-            // 👉 修复：将文字视差与模糊动画提取到休眠层之外，保证每帧都会更新透明度！
+            // 👉 文字视差与模糊动画提取到休眠层之外，保证每帧都会更新透明度！
             textSections.forEach(s => {
                 const r = s.getBoundingClientRect();
                 const centerY = r.top + r.height / 2;
@@ -576,7 +576,7 @@
                 s.style.filter = `blur(${blur}px)`;
             });
 
-            // 👉 休眠机制：只有当 Canvas 进度有差异时，才消耗性能去重绘 3D 图片
+            // 休眠机制：只有当 Canvas 进度有差异时，才消耗性能去重绘 3D 图片
             if (Math.abs(currentProgress - smoothedProgress) > 0.0001 || lastDrawnIdx === -1) {
                 
                 const progress = Math.min(smoothedProgress, 1);
